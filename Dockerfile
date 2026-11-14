@@ -4,7 +4,7 @@ ARG GO2RTC_BASE_VERSION="1.9.15"
 # The pinned commit is a deliberate choice. Bump GO2RTC_REF in its own commit.
 FROM --platform=$BUILDPLATFORM docker.io/library/alpine:3 AS go2rtc-clone
 ARG GO2RTC_REPO="https://github.com/supergillis/go2rtc.git"
-ARG GO2RTC_REF="e049ca5be6cc139a3b14d15c7fc44009958597d3"
+ARG GO2RTC_REF="e189b5f2cbf0936b30715aa10e94bdbac6930aeb"
 RUN apk add --no-cache git
 WORKDIR /src
 RUN git init -q . \
