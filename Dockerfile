@@ -1,17 +1,21 @@
 ARG GO_VERSION="1.27"
 ARG GO2RTC_BASE_VERSION="1.9.15"
 
-# Replaced by `--build-context go2rtc-source=<dir>` for local builds. The
-# directory root must be the go2rtc repository root, with its .git kept so
-# go2rtc -version reports the revision.
-FROM --platform=$BUILDPLATFORM docker.io/library/alpine:3 AS go2rtc-source
-ARG GO2RTC_REPOSITORY="https://github.com/supergillis/go2rtc"
-ARG GO2RTC_REF="feat/tuya-oem"
+# The pinned commit is a deliberate choice. Bump GO2RTC_REF in its own commit.
+FROM --platform=$BUILDPLATFORM docker.io/library/alpine:3 AS go2rtc-clone
+ARG GO2RTC_REPO="https://github.com/supergillis/go2rtc.git"
+ARG GO2RTC_REF="e049ca5be6cc139a3b14d15c7fc44009958597d3"
 RUN apk add --no-cache git
 WORKDIR /src
 RUN git init -q . \
-    && git fetch -q --depth 1 "${GO2RTC_REPOSITORY}" "${GO2RTC_REF}" \
+    && git fetch -q --depth 1 "${GO2RTC_REPO}" "${GO2RTC_REF}" \
     && git checkout -q FETCH_HEAD
+
+# Replaced by `--build-context go2rtc-source=<dir>` for local builds. The
+# directory root must be the go2rtc repo root with its .git kept, so that
+# go2rtc -version reports the revision.
+FROM scratch AS go2rtc-source
+COPY --from=go2rtc-clone /src /
 
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS go2rtc-build
 ARG TARGETOS

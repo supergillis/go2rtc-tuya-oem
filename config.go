@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
+	"unicode"
 )
 
 // Same default as havent, so a session saved without api_host keeps working.
@@ -53,18 +55,25 @@ func jsonErrorOffset(err error) int64 {
 	return 0
 }
 
-// normalizeAPIHost mirrors havent so a stored scheme or path never leaks into the URL.
-func normalizeAPIHost(host string) string {
-	trimmed := strings.TrimSpace(host)
-	trimmed = strings.TrimPrefix(trimmed, "https://")
-	trimmed = strings.TrimPrefix(trimmed, "http://")
-	if slash := strings.Index(trimmed, "/"); slash >= 0 {
-		trimmed = trimmed[:slash]
-	}
+// normalizeAPIHost keeps only host and port, so a stored scheme, path, query or
+// fragment can never add parameters to the printed URL.
+func normalizeAPIHost(rawHost string) (string, error) {
+	trimmed := strings.TrimSpace(rawHost)
 	if trimmed == "" {
-		return defaultAPIHost
+		return defaultAPIHost, nil
 	}
-	return trimmed
+	if !strings.Contains(trimmed, "://") {
+		trimmed = "https://" + trimmed
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Host == "" || strings.ContainsFunc(parsed.Host, isInvalidHostRune) {
+		return "", errors.New("invalid field api_host")
+	}
+	return parsed.Host, nil
+}
+
+func isInvalidHostRune(character rune) bool {
+	return !unicode.IsLetter(character) && !unicode.IsDigit(character) && !strings.ContainsRune(".-:[]", character)
 }
 
 // URL builds the tuya:// URL for one camera. Errors name fields, never values.
@@ -107,9 +116,13 @@ func (session Session) URL(cameraID string) (string, error) {
 		{"package_name", session.PackageName},
 		{"client_device_id", session.DeviceID},
 	}
+	apiHost, err := normalizeAPIHost(session.APIHost)
+	if err != nil {
+		return "", err
+	}
 	pairs := make([]string, 0, len(params))
 	for _, param := range params {
 		pairs = append(pairs, param.name+"="+url.QueryEscape(param.value))
 	}
-	return "tuya://" + normalizeAPIHost(session.APIHost) + "?" + strings.Join(pairs, "&"), nil
+	return "tuya://" + apiHost + "?" + strings.Join(pairs, "&"), nil
 }

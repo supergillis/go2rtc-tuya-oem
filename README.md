@@ -82,4 +82,4 @@ podman build --build-context go2rtc-source=/path/to/go2rtc -t localhost/go2rtc-t
 podman run --rm localhost/go2rtc-tuya-oem:dev go2rtc -version
 ```
 
-Without the override, the build clones `GO2RTC_REPOSITORY` at `--build-arg GO2RTC_REF=<ref>`.
+Without the override, the build clones `GO2RTC_REPO` at `GO2RTC_REF`. `GO2RTC_REF` defaults to a full commit sha in the Dockerfile. Bumping it is a deliberate commit, never a branch name.

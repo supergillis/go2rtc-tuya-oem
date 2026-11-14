@@ -1,21 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 )
 
-const fullConfig = `{"signing_key":"sk","sid":"s id","ecode":"ec","partner":"pi","app_key":"ak","device_id":"phone1","package_name":"com.example.app","api_host":%q,"ch_key":"ck","talkback":true,"bridge_port":1984,"cameras":[{"camera_id":"cam1","camera_name":"Nursery"},{"camera_id":"cam2"}]}`
+const configTemplate = `{"signing_key":"sk","sid":"s id","ecode":"ec","partner":"pi","app_key":"ak","device_id":"phone1","package_name":"com.example.app","api_host":%q,"ch_key":"ck","talkback":true,"bridge_port":1984,"cameras":[{"camera_id":"cam1","camera_name":"Nursery"},{"camera_id":"cam2"}]}`
 
-const fullURL = "tuya://a1.tuyaus.com?device_id=cam1&sid=s+id&ecode=ec&partner_identity=pi&app_key=ak&signing_key=sk&ch_key=ck&package_name=com.example.app&client_device_id=phone1"
+const urlTemplate = "tuya://%s?device_id=cam1&sid=s+id&ecode=ec&partner_identity=pi&app_key=ak&signing_key=sk&ch_key=ck&package_name=com.example.app&client_device_id=phone1"
 
 func TestSessionURL(t *testing.T) {
-	withoutField := func(field string) string {
-		return strings.Replace(strings.Replace(fullConfig, `"`+field+`":`, `"x_`+field+`":`, 1), "%q", `"a1.tuyaus.com"`, 1)
+	configWithHost := func(host string) string {
+		return fmt.Sprintf(configTemplate, host)
 	}
-	withHost := func(host string) string {
-		return strings.Replace(fullConfig, "%q", `"`+host+`"`, 1)
+	configWithoutField := func(field string) string {
+		return strings.Replace(configWithHost("a1.tuyaus.com"), `"`+field+`":`, `"x_`+field+`":`, 1)
 	}
 
 	tests := []struct {
@@ -25,24 +26,29 @@ func TestSessionURL(t *testing.T) {
 		wantURL   string
 		wantError string
 	}{
-		{"bare host", withHost("a1.tuyaus.com"), "cam1", fullURL, ""},
-		{"https host with path", withHost("https://a1.tuyaus.com/api.json"), "cam1", fullURL, ""},
-		{"empty host uses default", withHost(""), "cam1", strings.Replace(fullURL, "a1.tuyaus.com", "a1.tuyaeu.com", 1), ""},
-		{"unknown camera", withHost("a1.tuyaus.com"), "cam9", "", "unknown camera cam9"},
-		{"missing signing_key", withoutField("signing_key"), "cam1", "", "missing field signing_key"},
-		{"missing sid", withoutField("sid"), "cam1", "", "missing field sid"},
-		{"missing ecode", withoutField("ecode"), "cam1", "", "missing field ecode"},
-		{"missing partner", withoutField("partner"), "cam1", "", "missing field partner"},
-		{"missing app_key", withoutField("app_key"), "cam1", "", "missing field app_key"},
-		{"missing device_id", withoutField("device_id"), "cam1", "", "missing field device_id"},
-		{"missing package_name", withoutField("package_name"), "cam1", "", "missing field package_name"},
-		{"missing ch_key", withoutField("ch_key"), "cam1", "", "missing field ch_key"},
+		{"bare host", configWithHost("a1.tuyaus.com"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"https host with path", configWithHost("https://a1.tuyaus.com/api.json"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"host with port", configWithHost("a1.tuyaus.com:8443"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com:8443"), ""},
+		{"query is dropped", configWithHost("a1.tuyaus.com?sid=evil"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"fragment is dropped", configWithHost("https://a1.tuyaus.com#x"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"ampersand in host", configWithHost("a1.tuyaus.com&sid=evil"), "cam1", "", "invalid field api_host"},
+		{"scheme only", configWithHost("https://"), "cam1", "", "invalid field api_host"},
+		{"empty host uses default", configWithHost(""), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaeu.com"), ""},
+		{"unknown camera", configWithHost("a1.tuyaus.com"), "cam9", "", "unknown camera cam9"},
+		{"missing signing_key", configWithoutField("signing_key"), "cam1", "", "missing field signing_key"},
+		{"missing sid", configWithoutField("sid"), "cam1", "", "missing field sid"},
+		{"missing ecode", configWithoutField("ecode"), "cam1", "", "missing field ecode"},
+		{"missing partner", configWithoutField("partner"), "cam1", "", "missing field partner"},
+		{"missing app_key", configWithoutField("app_key"), "cam1", "", "missing field app_key"},
+		{"missing device_id", configWithoutField("device_id"), "cam1", "", "missing field device_id"},
+		{"missing package_name", configWithoutField("package_name"), "cam1", "", "missing field package_name"},
+		{"missing ch_key", configWithoutField("ch_key"), "cam1", "", "missing field ch_key"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			path := t.TempDir() + "/session.json"
-			if err := writeFile(path, test.config); err != nil {
+			if err := os.WriteFile(path, []byte(test.config), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			session, err := Load(path)
@@ -59,8 +65,4 @@ func TestSessionURL(t *testing.T) {
 			}
 		})
 	}
-}
-
-func writeFile(path, content string) error {
-	return os.WriteFile(path, []byte(content), 0o600)
 }
