@@ -14,7 +14,7 @@ import (
 const defaultAPIHost = "a1.tuyaeu.com"
 
 // Session holds the havent bridge config fields needed to build a go2rtc URL.
-// Unrelated fields such as talkback and bridge_port are ignored on decode.
+// Unrelated fields such as bridge_port are ignored on decode.
 type Session struct {
 	SigningKey  string   `json:"signing_key"`
 	SID         string   `json:"sid"`
@@ -25,6 +25,7 @@ type Session struct {
 	PackageName string   `json:"package_name"`
 	APIHost     string   `json:"api_host"`
 	ChKey       string   `json:"ch_key"`
+	Talkback    bool     `json:"talkback"`
 	Cameras     []Camera `json:"cameras"`
 }
 
@@ -39,6 +40,10 @@ func Load(path string) (Session, error) {
 		return session, fmt.Errorf("read config: %w", err)
 	}
 	if err := json.Unmarshal(data, &session); err != nil {
+		var typeError *json.UnmarshalTypeError
+		if errors.As(err, &typeError) {
+			return session, fmt.Errorf("invalid field %s", typeError.Field)
+		}
 		return session, fmt.Errorf("parse config json at offset %d", jsonErrorOffset(err))
 	}
 	return session, nil
@@ -123,6 +128,9 @@ func (session Session) URL(cameraID string) (string, error) {
 	pairs := make([]string, 0, len(params))
 	for _, param := range params {
 		pairs = append(pairs, param.name+"="+url.QueryEscape(param.value))
+	}
+	if session.Talkback {
+		pairs = append(pairs, "backchannel=1")
 	}
 	return "tuya://" + apiHost + "?" + strings.Join(pairs, "&"), nil
 }

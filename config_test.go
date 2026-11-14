@@ -7,13 +7,16 @@ import (
 	"testing"
 )
 
-const configTemplate = `{"signing_key":"sk","sid":"s id","ecode":"ec","partner":"pi","app_key":"ak","device_id":"phone1","package_name":"com.example.app","api_host":%q,"ch_key":"ck","talkback":true,"bridge_port":1984,"cameras":[{"camera_id":"cam1","camera_name":"Nursery"},{"camera_id":"cam2"}]}`
+const configTemplate = `{"signing_key":"sk","sid":"s id","ecode":"ec","partner":"pi","app_key":"ak","device_id":"phone1","package_name":"com.example.app","api_host":%q,"ch_key":"ck","bridge_port":1984,"cameras":[{"camera_id":"cam1","camera_name":"Nursery"},{"camera_id":"cam2"}]}`
 
 const urlTemplate = "tuya://%s?device_id=cam1&sid=s+id&ecode=ec&partner_identity=pi&app_key=ak&signing_key=sk&ch_key=ck&package_name=com.example.app&client_device_id=phone1"
 
 func TestSessionURL(t *testing.T) {
 	configWithHost := func(host string) string {
 		return fmt.Sprintf(configTemplate, host)
+	}
+	configWithTalkback := func(talkback string) string {
+		return strings.Replace(configWithHost("a1.tuyaus.com"), `"ch_key":"ck",`, `"ch_key":"ck","talkback":`+talkback+`,`, 1)
 	}
 	configWithoutField := func(field string) string {
 		return strings.Replace(configWithHost("a1.tuyaus.com"), `"`+field+`":`, `"x_`+field+`":`, 1)
@@ -33,6 +36,10 @@ func TestSessionURL(t *testing.T) {
 		{"fragment is dropped", configWithHost("https://a1.tuyaus.com#x"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
 		{"ampersand in host", configWithHost("a1.tuyaus.com&sid=evil"), "cam1", "", "invalid field api_host"},
 		{"scheme only", configWithHost("https://"), "cam1", "", "invalid field api_host"},
+		{"talkback true", configWithTalkback("true"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com") + "&backchannel=1", ""},
+		{"talkback false", configWithTalkback("false"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"talkback missing", configWithHost("a1.tuyaus.com"), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaus.com"), ""},
+		{"talkback not a boolean", configWithTalkback(`"yes"`), "cam1", "", "invalid field talkback"},
 		{"empty host uses default", configWithHost(""), "cam1", fmt.Sprintf(urlTemplate, "a1.tuyaeu.com"), ""},
 		{"unknown camera", configWithHost("a1.tuyaus.com"), "cam9", "", "unknown camera cam9"},
 		{"missing signing_key", configWithoutField("signing_key"), "cam1", "", "missing field signing_key"},
@@ -51,12 +58,11 @@ func TestSessionURL(t *testing.T) {
 			if err := os.WriteFile(path, []byte(test.config), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			gotURL, gotError := "", ""
 			session, err := Load(path)
-			if err != nil {
-				t.Fatal(err)
+			if err == nil {
+				gotURL, err = session.URL(test.camera)
 			}
-			gotURL, err := session.URL(test.camera)
-			gotError := ""
 			if err != nil {
 				gotError = err.Error()
 			}

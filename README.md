@@ -21,7 +21,7 @@ Uses the havent bridge config field names, plus a required `ch_key`.
 }
 ```
 
-`api_host` may carry a scheme or path, only the host is used. It defaults to `a1.tuyaeu.com`. Other fields are ignored.
+`api_host` may carry a scheme or path, only the host is used. It defaults to `a1.tuyaeu.com`. `talkback` is an optional boolean, false when missing. When true the URL ends with `&backchannel=1`, otherwise there is no `backchannel` param. A non-boolean value is an error. Other fields are ignored.
 
 ## Usage
 
@@ -32,7 +32,7 @@ go2rtc-tuya-oem --config /config/tuya-session.json --camera abc123
 Prints one URL on stdout:
 
 ```
-tuya://<api_host>?device_id=<camera_id>&sid=..&ecode=..&partner_identity=..&app_key=..&signing_key=..&ch_key=..&package_name=..&client_device_id=..
+tuya://<api_host>?device_id=<camera_id>&sid=..&ecode=..&partner_identity=..&app_key=..&signing_key=..&ch_key=..&package_name=..&client_device_id=..[&backchannel=1]
 ```
 
 A missing field or unknown camera exits non-zero, names the field or camera on stderr and prints nothing on stdout. Secret values are never logged.
