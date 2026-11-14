@@ -4,7 +4,7 @@ ARG GO2RTC_BASE_VERSION="1.9.15"
 # The pinned commit is a deliberate choice. Bump GO2RTC_REF in its own commit.
 FROM --platform=$BUILDPLATFORM docker.io/library/alpine:3 AS go2rtc-clone
 ARG GO2RTC_REPO="https://github.com/supergillis/go2rtc.git"
-ARG GO2RTC_REF="e189b5f2cbf0936b30715aa10e94bdbac6930aeb"
+ARG GO2RTC_REF="f2cb5c80036d8719d237eabdffb8c5af76876a9d"
 RUN apk add --no-cache git
 WORKDIR /src
 RUN git init -q . \
@@ -25,7 +25,14 @@ ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0
 RUN apk add --no-cache git
 WORKDIR /build
 COPY --from=go2rtc-source / ./
-RUN --mount=type=cache,target=/root/.cache/go-build go build -ldflags "-s -w" -trimpath
+# Tagging HEAD v<app.Version> makes Go stamp a matching module version, so
+# go2rtc does not append +dev and Home Assistant sees the clean version.
+# The tag is forced because a full checkout already carries upstream tags.
+# The version is read from the source, never hardcoded.
+RUN version="$(sed -n 's/.*app\.Version = "\(.*\)".*/\1/p' main.go)" \
+    && test -n "${version}" \
+    && git -c safe.directory='*' tag -f "v${version}" \
+    && go build -ldflags "-s -w" -trimpath
 
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS helper-build
 ARG TARGETOS
