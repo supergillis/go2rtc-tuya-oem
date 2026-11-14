@@ -4,7 +4,7 @@ go2rtc runs `echo:` commands on every dial and reconnect, then dials the URL the
 
 ## Session JSON
 
-Uses the havent bridge config field names, plus a required `ch_key`.
+Uses the havent bridge config field names, plus a `ch_key`. havent does not write `ch_key` today, so it can come from the `--ch-key` flag instead. A `ch_key` in the JSON wins over the flag, and with neither the helper fails naming the field.
 
 ```json
 {
@@ -26,7 +26,7 @@ Uses the havent bridge config field names, plus a required `ch_key`.
 ## Usage
 
 ```
-go2rtc-tuya-oem --config /config/tuya-session.json --camera abc123
+go2rtc-tuya-oem --config /config/tuya-session.json [--ch-key <app ch key>] --camera abc123
 ```
 
 Prints one URL on stdout:
@@ -43,7 +43,7 @@ A missing field or unknown camera exits non-zero, names the field or camera on s
 echo:
   allow_paths: [/usr/local/bin/go2rtc-tuya-oem]
 streams:
-  nursery: echo:/usr/local/bin/go2rtc-tuya-oem --config /config/tuya-session.json --camera <id>
+  nursery: echo:/usr/local/bin/go2rtc-tuya-oem --config /config/tuya-session.json --ch-key <app ch key> --camera <id>
 ```
 
 go2rtc refuses `echo:` sources added through its API, so this only works in the YAML file.
@@ -72,6 +72,8 @@ services:
 ```
 
 Put `tuya-session.json` and a `go2rtc.yaml` with the `echo:` stream from the section above in `./config`.
+
+The image reports the upstream go2rtc version it is based on, for example `1.9.15`, so Home Assistant sees no version mismatch. Only the revision in `go2rtc -version` shows the fork.
 
 ### Local build
 

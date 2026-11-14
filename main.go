@@ -13,6 +13,7 @@ func main() {
 
 	configPath := flag.String("config", "", "path to the saved session JSON")
 	cameraID := flag.String("camera", "", "camera id to print the URL for")
+	fallbackChKey := flag.String("ch-key", "", "ch_key to use when the session JSON has none")
 	flag.Parse()
 
 	if *configPath == "" || *cameraID == "" {
@@ -20,7 +21,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	session, err := Load(*configPath)
+	session, err := Load(*configPath, *fallbackChKey)
 	if err != nil {
 		slog.Error("load session", "error", err)
 		os.Exit(1)

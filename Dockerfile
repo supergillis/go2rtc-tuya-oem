@@ -20,6 +20,7 @@ COPY --from=go2rtc-clone /src /
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS go2rtc-build
 ARG TARGETOS
 ARG TARGETARCH
+ARG GO2RTC_BASE_VERSION
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0
 # git is required for the VCS stamp that go2rtc -version prints.
 RUN apk add --no-cache git
@@ -31,6 +32,7 @@ COPY --from=go2rtc-source / ./
 # The version is read from the source, never hardcoded.
 RUN version="$(sed -n 's/.*app\.Version = "\(.*\)".*/\1/p' main.go)" \
     && test -n "${version}" \
+    && { test "${version}" = "${GO2RTC_BASE_VERSION}" || { echo "go2rtc source is ${version} but the base image is ${GO2RTC_BASE_VERSION}, bump GO2RTC_BASE_VERSION too" >&2; exit 1; }; } \
     && git -c safe.directory='*' tag -f "v${version}" \
     && go build -ldflags "-s -w" -trimpath
 

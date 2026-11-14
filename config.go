@@ -33,7 +33,9 @@ type Camera struct {
 	ID string `json:"camera_id"`
 }
 
-func Load(path string) (Session, error) {
+// Load reads the session JSON. fallbackChKey fills ch_key only when the JSON
+// has none, because havent does not write that field today.
+func Load(path, fallbackChKey string) (Session, error) {
 	var session Session
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -45,6 +47,9 @@ func Load(path string) (Session, error) {
 			return session, fmt.Errorf("invalid field %s", typeError.Field)
 		}
 		return session, fmt.Errorf("parse config json at offset %d", jsonErrorOffset(err))
+	}
+	if session.ChKey == "" {
+		session.ChKey = fallbackChKey
 	}
 	return session, nil
 }
