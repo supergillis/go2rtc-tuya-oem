@@ -51,3 +51,35 @@ go2rtc refuses `echo:` sources added through its API, so this only works in the 
 ## Release
 
 Pushing a tag `v*` builds static linux/amd64 and linux/arm64 binaries and attaches them to a GitHub release.
+
+## Docker image
+
+`ghcr.io/supergillis/go2rtc-tuya-oem:<tag>` and `:latest`, for linux/amd64 and linux/arm64, are published on every `v*` tag. The image is `alexxit/go2rtc` with go2rtc rebuilt from `supergillis/go2rtc` at the `GO2RTC_REF` build arg, plus `/usr/local/bin/go2rtc-tuya-oem`. Entrypoint, `/config` volume and default `/config/go2rtc.yaml` are unchanged, so the go2rtc docs apply.
+
+```
+docker run -d --name go2rtc --network host \
+  -v /path/to/config:/config \
+  ghcr.io/supergillis/go2rtc-tuya-oem:latest
+```
+
+```yaml
+services:
+  go2rtc:
+    image: ghcr.io/supergillis/go2rtc-tuya-oem:latest
+    network_mode: host
+    volumes:
+      - ./config:/config
+```
+
+Put `tuya-session.json` and a `go2rtc.yaml` with the `echo:` stream from the section above in `./config`.
+
+### Local build
+
+Use a local go2rtc checkout instead of cloning. The directory root must be the go2rtc repo root and keep its `.git`.
+
+```
+podman build --build-context go2rtc-source=/path/to/go2rtc -t localhost/go2rtc-tuya-oem:dev .
+podman run --rm localhost/go2rtc-tuya-oem:dev go2rtc -version
+```
+
+Without the override, the build clones `GO2RTC_REPOSITORY` at `--build-arg GO2RTC_REF=<ref>`.

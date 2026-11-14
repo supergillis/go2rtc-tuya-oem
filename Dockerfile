@@ -1,0 +1,38 @@
+ARG GO_VERSION="1.27"
+ARG GO2RTC_BASE_VERSION="1.9.15"
+
+# Replaced by `--build-context go2rtc-source=<dir>` for local builds. The
+# directory root must be the go2rtc repository root, with its .git kept so
+# go2rtc -version reports the revision.
+FROM --platform=$BUILDPLATFORM docker.io/library/alpine:3 AS go2rtc-source
+ARG GO2RTC_REPOSITORY="https://github.com/supergillis/go2rtc"
+ARG GO2RTC_REF="feat/tuya-oem"
+RUN apk add --no-cache git
+WORKDIR /src
+RUN git init -q . \
+    && git fetch -q --depth 1 "${GO2RTC_REPOSITORY}" "${GO2RTC_REF}" \
+    && git checkout -q FETCH_HEAD
+
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS go2rtc-build
+ARG TARGETOS
+ARG TARGETARCH
+ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0
+# git is required for the VCS stamp that go2rtc -version prints.
+RUN apk add --no-cache git
+WORKDIR /build
+COPY --from=go2rtc-source / ./
+RUN --mount=type=cache,target=/root/.cache/go-build go build -ldflags "-s -w" -trimpath
+
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS helper-build
+ARG TARGETOS
+ARG TARGETARCH
+ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0
+WORKDIR /build
+COPY go.mod ./
+COPY *.go ./
+RUN go build -ldflags "-s -w" -trimpath -o go2rtc-tuya-oem .
+
+# Same layout as alexxit/go2rtc: tini entrypoint, /config volume, same CMD.
+FROM docker.io/alexxit/go2rtc:${GO2RTC_BASE_VERSION}
+COPY --from=go2rtc-build /build/go2rtc /usr/local/bin/go2rtc
+COPY --from=helper-build /build/go2rtc-tuya-oem /usr/local/bin/go2rtc-tuya-oem
