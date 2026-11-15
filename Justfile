@@ -1,0 +1,6 @@
+lint:
+    go vet ./...
+    test -z "$(gofmt -l .)"
+
+test:
+    go test ./...
