@@ -1,5 +1,5 @@
 ARG GO_VERSION="1.27"
-ARG GO2RTC_IMAGE="ghcr.io/supergillis/go2rtc:1.9.15-oem.1"
+ARG GO2RTC_IMAGE="ghcr.io/supergillis/go2rtc:1.9.15-oem.3@sha256:df32d0a5f1ce05b9a02909325954734767481b13298fd70df89abecf7518071b"
 
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS helper-build
 ARG TARGETOS
