@@ -54,7 +54,7 @@ Pushing a tag `v*` builds static linux/amd64 and linux/arm64 binaries and attach
 
 ## Docker image
 
-`ghcr.io/supergillis/go2rtc-tuya-oem:<tag>` and `:latest`, for linux/amd64 and linux/arm64, are published on every `v*` tag. The image is `alexxit/go2rtc` with go2rtc rebuilt from `supergillis/go2rtc` at the `GO2RTC_REF` build arg, plus `/usr/local/bin/go2rtc-tuya-oem`. Entrypoint, `/config` volume and default `/config/go2rtc.yaml` are unchanged, so the go2rtc docs apply.
+`ghcr.io/supergillis/go2rtc-tuya-oem:<tag>` and `:latest`, for linux/amd64 and linux/arm64, are published on every `v*` tag. The image is the go2rtc fork image, set by the `GO2RTC_IMAGE` build arg, plus `/usr/local/bin/go2rtc-tuya-oem`. Entrypoint, `/config` volume and default `/config/go2rtc.yaml` are unchanged, so the go2rtc docs apply.
 
 ```
 docker run -d --name go2rtc --network host \
@@ -73,15 +73,13 @@ services:
 
 Put `tuya-session.json` and a `go2rtc.yaml` with the `echo:` stream from the section above in `./config`.
 
-The image reports the upstream go2rtc version it is based on, for example `1.9.15`, so Home Assistant sees no version mismatch. Only the revision in `go2rtc -version` shows the fork.
+### Bumping go2rtc
+
+Change the `GO2RTC_IMAGE` default in the Dockerfile to the new fork tag and digest, in its own commit.
 
 ### Local build
 
-Use a local go2rtc checkout instead of cloning. The directory root must be the go2rtc repo root and keep its `.git`.
-
 ```
-podman build --build-context go2rtc-source=/path/to/go2rtc -t localhost/go2rtc-tuya-oem:dev .
+podman build --build-arg GO2RTC_IMAGE=<fork image> -t localhost/go2rtc-tuya-oem:dev .
 podman run --rm localhost/go2rtc-tuya-oem:dev go2rtc -version
 ```
-
-Without the override, the build clones `GO2RTC_REPO` at `GO2RTC_REF`. `GO2RTC_REF` defaults to a full commit sha in the Dockerfile. Bumping it is a deliberate commit, never a branch name.
